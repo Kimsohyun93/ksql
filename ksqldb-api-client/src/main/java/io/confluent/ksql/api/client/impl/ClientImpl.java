@@ -89,6 +89,7 @@ public class ClientImpl implements Client {
   private final Map<String, Object> requestProperties;
   private final AtomicReference<String> serializedConsistencyVector;
   private final AtomicReference<String> continuationToken;
+  private final ClientImpl client;
   /**
    * {@code Client} instances should be created via {@link Client#create(ClientOptions)}, NOT via
    * this constructor.
@@ -116,8 +117,9 @@ public class ClientImpl implements Client {
         SocketAddress.inetSocketAddress(clientOptions.getPort(), clientOptions.getHost());
     this.sessionVariables = new HashMap<>();
     this.serializedConsistencyVector = new AtomicReference<>("");
-    this.continuationToken = new AtomicReference<>("");
+    this.continuationToken = new AtomicReference<>();
     this.requestProperties = new HashMap<>();
+    this.client = this;
   }
 
   @Override
@@ -143,8 +145,19 @@ public class ClientImpl implements Client {
     final CompletableFuture<StreamedQueryResult> cf = new CompletableFuture<>();
     makeQueryRequest(sql, properties, cf,
         (ctx, rp, fut, req) -> new StreamQueryResponseHandler(
-            ctx, rp, fut, serializedConsistencyVector, continuationToken));
+            ctx, rp, fut, serializedConsistencyVector, continuationToken, sql, client));
     return cf;
+  }
+
+  public CompletableFuture<StreamedQueryResult> retry(
+          final int maxRetries,
+          final String sql,
+          final Optional<String> continuationToken) throws InterruptedException {
+    for (int i = 0; i < maxRetries; i++) {
+      long duration = 100;
+      Thread.sleep(duration);
+      return this.streamQuery(sql);
+    }
   }
 
   @Override
