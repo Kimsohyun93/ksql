@@ -134,7 +134,7 @@ public class DataSourceExtractorTest {
   @Test
   public void shouldThrowIfLeftJoinSourceDoesNotExist() {
     // Given:
-    final AstNode stmt = givenQuery("SELECT * FROM UNKNOWN JOIN TEST2"
+    final AstNode stmt = givenQuery("SELECT * FROM UNKNOWN LEFT JOIN TEST2"
         + " ON UNKNOWN.col1 = test2.col1;");
 
     // When:
@@ -150,6 +150,23 @@ public class DataSourceExtractorTest {
 
   @Test
   public void shouldThrowIfRightJoinSourceDoesNotExist() {
+    // Given:
+    final AstNode stmt = givenQuery("SELECT * FROM UNKNOWN RIGHT JOIN TEST2"
+        + " ON UNKNOWN.col1 = test2.col1;");
+
+    // When:
+    final Exception e = assertThrows(
+        KsqlException.class,
+        () -> extractor.extractDataSources(stmt)
+    );
+
+    // Then:
+    assertThat(e.getMessage(), containsString(
+        "UNKNOWN does not exist."));
+  }
+
+  @Test
+  public void shouldThrowIfInnerJoinSourceDoesNotExist() {
     // Given:
     final AstNode stmt = givenQuery("SELECT * FROM TEST1 JOIN UNKNOWN"
         + " ON test1.col1 = UNKNOWN.col1;");

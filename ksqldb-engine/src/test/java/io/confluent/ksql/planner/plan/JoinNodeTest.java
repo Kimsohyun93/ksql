@@ -19,6 +19,7 @@ import static io.confluent.ksql.metastore.model.DataSource.DataSourceType;
 import static io.confluent.ksql.planner.plan.JoinNode.JoinType.INNER;
 import static io.confluent.ksql.planner.plan.JoinNode.JoinType.LEFT;
 import static io.confluent.ksql.planner.plan.JoinNode.JoinType.OUTER;
+import static io.confluent.ksql.planner.plan.JoinNode.JoinType.RIGHT;
 import static io.confluent.ksql.planner.plan.PlanTestUtil.SOURCE_NODE_FORCE_CHANGELOG;
 import static io.confluent.ksql.planner.plan.PlanTestUtil.getNodeByName;
 import static java.util.Optional.empty;
@@ -324,6 +325,53 @@ public class JoinNodeTest {
         WITHIN_EXPRESSION_WITH_GRACE.get(),
         VALUE_FORMAT.getFormatInfo(),
         OTHER_FORMAT.getFormatInfo(),
+        CONTEXT_STACKER
+    );
+  }
+
+  @Test
+  public void shouldPerformStreamToStreamRightJoin() {
+    // Given:
+    setupStream(left, leftSchemaKStream);
+    setupStream(right, rightSchemaKStream);
+
+    final JoinNode joinNode =
+        new JoinNode(nodeId, RIGHT, joinKey, true, left, right, WITHIN_EXPRESSION, "KAFKA");
+
+    // When:
+    joinNode.buildStream(planBuildContext);
+
+    // Then:
+    verify(rightSchemaKStream).leftJoin(
+        leftSchemaKStream,
+        SYNTH_KEY,
+        WITHIN_EXPRESSION.get(),
+        OTHER_FORMAT.getFormatInfo(),
+        VALUE_FORMAT.getFormatInfo(),
+        CONTEXT_STACKER
+    );
+  }
+
+  @Test
+  public void shouldPerformStreamToStreamRightJoinWithGracePeriod() {
+    // Given:
+    setupStream(left, leftSchemaKStream);
+    setupStream(right, rightSchemaKStream);
+
+    final JoinNode joinNode =
+        new JoinNode(nodeId, RIGHT, joinKey, true, left, right,
+            WITHIN_EXPRESSION_WITH_GRACE, "KAFKA");
+
+    // When:
+    joinNode.buildStream(planBuildContext);
+
+    // Then:
+    verify(rightSchemaKStream).leftJoin(
+        leftSchemaKStream,
+        SYNTH_KEY,
+        WITHIN_EXPRESSION_WITH_GRACE.get(),
+        OTHER_FORMAT.getFormatInfo(),
+        VALUE_FORMAT.getFormatInfo(),
         CONTEXT_STACKER
     );
   }
